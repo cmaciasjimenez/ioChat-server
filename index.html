@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>TFG</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<link rel="icon" type="image/png" href="http://i.imgur.com/ZpHHa69.png">
+	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	<style>
+	body{
+		margin-top: 30px;
+		/*background-color: rgb(50, 70, 72);*/
+	}
+	#messageArea{
+		display:none;
+	}
+	#map {
+		/*display: none;
+		margin-top: 25px;*/
+		width: 100%;
+		height: 705px;
+		margin-left:auto;
+		margin-right:auto;
+	}
+	.chat {
+  		height: 580px;
+  		overflow-y: scroll;
+	}
+	.well {
+    	background: rgb(163, 226, 251);
+	}
+	.btn {
+	    /*background: #2094FA;
+	    color: #ffffff;*/
+	}
+	#usersArea {
+  		display: none;
+	}
+	</style>
+</head>
+<body>
+
+<div class="container">
+
+	<div class="col-md-4">
+
+		<div id="userFormArea" class="row">
+				<form id="userForm">
+						<div class="form-group">
+							<label>Enter Username</label>
+							<input class="form-control" id="username" />
+							<br />
+							<input type="submit" class="btn btn-primary" value="Login" />
+						</div>
+				</form>
+		</div><!-- /userFormArea -->
+
+		<div id="messageArea" class="row">
+			<form id="messageForm">
+				<div class="form-group">
+					<label>Enter Message</label>
+					<input class="form-control" id="message" />
+					<br />
+					<input type="submit" class="btn btn-primary" value="Send Message" />
+				</div>
+			</form>
+			<div class="chat" id="chat"></div>
+		</div><!-- /messageArea -->
+
+	</div><!-- /col-md-4 -->
+
+	<div class="col-md-2" id="usersArea">
+		<label>Online Users</label>
+		<ul class="list-group well" id="users"></ul>
+	</div><!-- /col-md-2 -->
+
+	<div class="col-md-6">
+		<label>Users Map</label>
+		<div id="map"></div>
+	</div><!-- /col-md-6 -->
+	
+</div><!-- /container -->
+
+<script>
+var map;
+var markers = [];
+
+$(function(){
+  	var socket = io();
+  	var $userFormArea = $('#userFormArea');
+	var $userForm = $('#userForm');
+	var $username = $('#username');
+  	var $messageArea = $('#messageArea');
+  	var $users = $('#users');
+  	var $usersArea = $('#usersArea');
+  	var $chat = $('#chat');
+  	var $messageForm = $('#messageForm');
+  	var $message = $('#message');
+  	var $map = $('#map');
+
+  	$userForm.submit(function(e){
+		e.preventDefault();
+
+		if ($username.val()) {
+			socket.emit('new user', $username.val());
+			$userFormArea.hide();
+			$messageArea.show();
+			$usersArea.show();
+			$username.val('');
+		} else {
+			//$userForm.prepend('<div class="alert alert-warning" role="alert">'Please introduce a valid username'</div>');
+			alert('Please introduce a valid username');	
+		}
+	});
+
+  	$messageForm.submit(function(e){
+		e.preventDefault();
+
+		if ($message.val()) {
+			socket.emit('send message', $message.val());
+			$message.val('');
+		}
+	});
+
+	socket.on('get users', function(data){
+		var html = '';
+		for(i = 0; i < data.length; i++){
+			html += '<li class="list-group-item">'+data[i]+'</li>';
+		}
+		$users.html(html);
+	});
+
+	socket.on('new browser message', function(data){
+		$chat.prepend('<div class="well"><strong>'+data.user+'</strong>: '+data.msg+'</div>');
+	});
+
+	socket.on('load location', function(data) {
+		console.log('MAP: ' + data.lat + ', ' + data.longit + ', Username: ' + data.user);
+		var loc = {lat: parseFloat(data.lat), lng: parseFloat(data.longit)};
+		addMarker(loc, data.user);
+	});
+
+});
+
+function initMap() {
+
+ 	var pos = {lat: 40.4161708, lng: -3.7060859};
+
+  	var mapOptions = {
+  		zoom: 11,
+    	center: pos,
+    	//mapTypeId: 'terrain'
+  	}
+
+  	map = new google.maps.Map(document.getElementById("map"), mapOptions);
+
+	// This event listener will call addMarker() when the map is clicked
+    /*map.addListener('click', function(event) {
+      addMarker(event.latLng);
+    });*/
+}
+
+// Adds a marker to the map and push to the array
+function addMarker(location, user) {
+  	var marker = new google.maps.Marker({
+  		label: user.charAt(0),
+    	position: location,
+    	map: map
+  	});
+	markers.push(marker);
+}
+
+// Sets the map on all markers in the array
+function setMapOnAll(map) {
+	for (var i = 0; i < markers.length; i++) {
+		markers[i].setMap(map);
+	}
+}
+
+// Removes the markers from the map, but keeps them in the array
+function clearMarkers() {
+	setMapOnAll(null);
+}
+
+// Shows any markers currently in the array.
+function showMarkers() {
+	setMapOnAll(map);
+}
+
+// Deletes all markers in the array by removing references to them
+function deleteMarkers() {
+	clearMarkers();
+	markers = [];
+}	      
+
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR-API-KEY&callback=initMap"></script>
+</body>
+</html>
